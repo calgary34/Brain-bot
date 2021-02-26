@@ -2,6 +2,8 @@ from discord.ext import commands
 import discord
 import os
 import sympy as sy
+import requests
+import json
 client = commands.Bot(command_prefix="b ")
 client.remove_command("help")
 x,y = sy.symbols('x y')
@@ -52,6 +54,9 @@ async def solve(ctx,exp,exp2):
     await ctx.send(embed=em)
   except:
     await ctx.send('Error.')
+@solve.error
+async def solve_error(ctx, error):
+  await ctx.send("Error.")
 @client.command(aliases=['diff'])
 async def derivative(ctx,exp,n):
   try:
@@ -62,6 +67,9 @@ async def derivative(ctx,exp,n):
     await ctx.send(embed=em)
   except:
     await ctx.send('Error.')
+@derivative.error
+async def derivative_error(ctx, error):
+  await ctx.send("Error.")
 @client.command(aliases=['antidiff'])
 async def antiderivative(ctx,exp,n):
   try:
@@ -73,20 +81,50 @@ async def antiderivative(ctx,exp,n):
   except Exception as e:
     print(e)
     await ctx.send('Error.')
+@antiderivative.error
+async def antiderivative_error(ctx, error):
+  await ctx.send("Error.")
 @calc.error
 async def calc_error(ctx, error):
   if isinstance(error, commands.MissingRequiredArgument):
     await ctx.send("You better give me an expression to evaluate!")
+@client.command(aliases=['elem'])
+async def element(ctx,name):
+  data=json.loads(requests.get(f'https://chemistrydata.herokuapp.com/elements/{name}').text)
+  if "status" in data:
+    await ctx.send('Element not found.')
+  else:
+    em=discord.Embed(title=f"Data for {name}")
+    em.add_field(name="Symbol",value=str(data['symbol']))
+    em.add_field(name="Atomic Number",value=str(data['number']))
+    em.add_field(name="Category",value=str(data['category']))
+    em.add_field(name="Period",value=str(data['period']))
+    em.add_field(name="Appearance",value=str(data['appearance']))
+    em.add_field(name="Atomic Mass",value=str(data['atomic_mass']))
+    em.add_field(name="Density",value=str(data['density']))
+    em.add_field(name="Atomic Mass",value=str(data['atomic_mass']))
+    em.add_field(name="Phase at room temperature",value=str(data['phase']))
+    em.add_field(name="Molar Heat Capacity",value=str(data['molar_heat']))
+    em.add_field(name="Electron Configuration",value=str(data['electron_configuration']))
+    em.add_field(name="Electron Affinity",value=str(data['electron_affinity']))
+    em.add_field(name="Melting Point",value=str(data['melt']))
+    em.add_field(name="Boiling Point",value=str(data['boil']))
+    em.add_field(name="Discoverer",value=str(data['discovered_by']))
+    await ctx.send(embed=em)
+@element.error
+async def element_error(ctx, error):
+  print(error)
+  await ctx.send('Error.')
 @client.group(invoke_without_command=True)
 async def help(ctx):
     em = discord.Embed(
         title="Help",
         description=
-        "Brain bot is a super cool discord bot.")
+        "List of commands in Brain Bot. Remember to put `b ` before each command.")
     em.add_field(
         name="Commands",
         value=
-        "`calc`,`help`,`ping`",inline=False
+        "`calc`,`help`,`ping`,`derivative`,`antiderivative`",inline=False
     )
     await ctx.send(embed=em)
 class HelpCommand:
@@ -124,5 +162,21 @@ async def help_solve(ctx):
         'Help on `solve`',
         "Solves equations. ",
         "`b solve <left side of equation> <right side of equation>`", "None")
+    await ctx.send(embed=cmd.em)
+@help.command(
+    name='derivative', pass_context=True)
+async def help_derivative(ctx):
+    cmd = HelpCommand(
+        'Help on `derivative`',
+        "Calculates the derivative of functions.",
+        "`b derivative <expression> <variable>`", "`diff`")
+    await ctx.send(embed=cmd.em)
+@help.command(
+    name='antiderivative', pass_context=True)
+async def help_antiderivative(ctx):
+    cmd = HelpCommand(
+        'Help on `antiderivative`',
+        "Calculates the antiderivative of functions.",
+        "`b derivative <expression> <variable>`", "`antidiff`")
     await ctx.send(embed=cmd.em)
 client.run(os.getenv("TOKEN"))
